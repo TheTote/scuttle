@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
-	"time"
 	"syscall"
+	"time"
 
 	"github.com/cenk/backoff"
 	"github.com/monzo/typhon"
@@ -70,11 +70,11 @@ func main() {
 	var proc *os.Process
 	stop := make(chan os.Signal, 2)
 	signal.Notify(stop, syscall.SIGINT) // Only listen to SIGINT until after child proc starts
-	
+
 	// Pass signals to the child process
 	// This takes an OS signal and passes to the child process scuttle starts (proc)
 	go func() {
-		
+
 		for sig := range stop {
 			if sig == syscall.SIGURG {
 				// SIGURG is used by Golang for it's own purposes, ignore it as these signals
@@ -130,14 +130,38 @@ func kill(exitCode int) {
 	case config.IstioQuitAPI == "":
 		// No istio API sent, fallback to Pkill method
 		log(fmt.Sprintf(logLineUnformatted, "Stopping Istio with pkill", "ISTIO_QUIT_API is not set", exitCode))
+		pushMetrics()
 		killGenericEndpoints()
 		killIstioWithPkill()
 	default:
 		// Stop istio using api
 		log(fmt.Sprintf(logLineUnformatted, "Stopping Istio with API", "ISTIO_QUIT_API is set", exitCode))
+		pushMetrics()
 		killGenericEndpoints()
 		killIstioWithAPI()
 	}
+}
+
+func pushMetrics() {
+	if config.SendMetricsOnExit == false {
+		return
+	}
+
+	// get envoy metrics
+	metricsResp := typhon.NewRequest(context.Background(), "GET", config.GetMetricsAPI, nil).Send().Response()
+	if metricsResp.Error != nil {
+		log(fmt.Sprintf("Sent GET to '%s', error: %s", config.GetMetricsAPI, metricsResp.Error))
+		return
+	}
+	log(fmt.Sprintf("Sent GET to '%s', status code: %d", config.GetMetricsAPI, metricsResp.StatusCode))
+
+	// push metrics
+	gatewayResp := typhon.NewRequest(context.Background(), "POST", config.PushMetricsAPI, metricsResp.Body).Send().Response()
+	if gatewayResp.Error != nil {
+		log(fmt.Sprintf("Sent POST to '%s', error: %s", config.PushMetricsAPI, metricsResp.Error))
+		return
+	}
+	log(fmt.Sprintf("Sent POST to '%s', status code: %d", config.PushMetricsAPI, gatewayResp.StatusCode))
 }
 
 func killGenericEndpoints() {

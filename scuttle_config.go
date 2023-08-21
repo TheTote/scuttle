@@ -19,6 +19,9 @@ type ScuttleConfig struct {
 	NeverKillIstioOnFailure bool
 	GenericQuitEndpoints    []string
 	QuitWithoutEnvoyTimeout time.Duration
+	SendMetricsOnExit       bool
+	GetMetricsAPI           string
+	PushMetricsAPI          string
 }
 
 func log(message string) {
@@ -41,6 +44,9 @@ func getConfig() ScuttleConfig {
 		NeverKillIstioOnFailure: getBoolFromEnv("NEVER_KILL_ISTIO_ON_FAILURE", false, loggingEnabled),
 		GenericQuitEndpoints:    getStringArrayFromEnv("GENERIC_QUIT_ENDPOINTS", make([]string, 0), loggingEnabled),
 		QuitWithoutEnvoyTimeout: getDurationFromEnv("QUIT_WITHOUT_ENVOY_TIMEOUT", time.Duration(0), loggingEnabled),
+		SendMetricsOnExit:       getBoolFromEnv("SEND_METRICS_ON_EXIT", false, loggingEnabled),
+		GetMetricsAPI:           getStringFromEnv("GET_METRICS_API", "", loggingEnabled),
+		PushMetricsAPI:          getStringFromEnv("PUSH_METRICS_API", "", loggingEnabled),
 	}
 
 	return config
