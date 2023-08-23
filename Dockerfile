@@ -6,5 +6,5 @@ RUN go get -d
 RUN go test -test.timeout 30s 
 RUN CGO_ENABLED=0 go build -o scuttle -ldflags="-X 'main.Version=${VERSION}'"
 
-FROM scratch
+FROM ubuntu:focal
 COPY --from=build /app/scuttle /scuttle
